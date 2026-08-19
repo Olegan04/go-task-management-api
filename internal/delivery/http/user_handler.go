@@ -1,0 +1,42 @@
+package http
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"task-manager/internal/domain"
+	"task-manager/internal/usecase"
+)
+
+type UserHandler struct {
+	usecase *usecase.UserUsecase
+}
+
+func NewUserHandler(usecase *usecase.UserUsecase) *UserHandler {
+	return &UserHandler{usecase: usecase}
+}
+
+func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req domain.RegisterRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Decode error: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.usecase.Register(r.Context(), req)
+	if err != nil {
+		log.Printf("Register error: %v", err)
+		if err.Error() == "email already taken" {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(resp)
+}
