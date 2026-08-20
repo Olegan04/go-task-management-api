@@ -2,10 +2,12 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"task-manager/internal/domain"
 	"task-manager/internal/usecase"
+	castomErr "task-manager/pkg/errors"
 )
 
 type UserHandler struct {
@@ -28,7 +30,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.usecase.Register(r.Context(), req)
 	if err != nil {
 		log.Printf("Register error: %v", err)
-		if err.Error() == "email already taken" {
+		if errors.Is(err, castomErr.ErrEmailTaken) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
@@ -39,4 +41,31 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req domain.LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Decode error: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.usecase.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		log.Printf("Login error: %v", err)
+		if errors.Is(err, castomErr.ErrInvalidCredentials) {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	logResponse := domain.LoginResponse{Token: token}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(logResponse)
 }

@@ -6,16 +6,44 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	deliveryHttp "task-manager/internal/delivery/http"
 	"task-manager/internal/repository/postgres"
 	"task-manager/internal/usecase"
 	"task-manager/pkg/db"
+	"task-manager/pkg/utils"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+var jwtSecret = "Sheregesh=sci&&bike"
+
+func Auth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "Authorization is missing", http.StatusUnauthorized)
+			return
+		}
+		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+		if tokenString == "" {
+			http.Error(w, "Missing token", http.StatusUnauthorized)
+			return
+		}
+		userID, err := utils.ValidateToken(tokenString, []byte(jwtSecret))
+		if err != nil {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), utils.UserIDKey, userID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
 func main() {
 	dbCfg := db.Config{
@@ -26,14 +54,14 @@ func main() {
 		DBName:   getEnv("DB_Name", "task_db"),
 		SSLMode:  getEnv("DB_SSLMODE", "disable"),
 	}
-	database, err := db.NewPosrgresDB(dbCfg)
+	database, err := db.NewPostgresDB(dbCfg)
 	if err != nil {
 		log.Fatalf("Fatal: cannot connect to db: %v", err)
 	}
 	defer database.Close()
 
 	userRepo := postgres.NewUserRepo(database)
-	userUsecase := usecase.NewUserUsecase(userRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo, jwtSecret)
 	userHandler := deliveryHttp.NewUserHandler(userUsecase)
 
 	r := chi.NewRouter()
@@ -42,6 +70,7 @@ func main() {
 	r.Use(middleware.Timeout(10 * time.Second))
 
 	r.Post("/api/register", userHandler.Register)
+	r.Post("/api/login", userHandler.Login)
 
 	srv := &http.Server{
 		Addr:         ":8080",
@@ -63,8 +92,8 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, cance := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cance()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}

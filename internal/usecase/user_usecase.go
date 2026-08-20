@@ -2,9 +2,10 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"task-manager/internal/domain"
+	castomErr "task-manager/pkg/errors"
+	"task-manager/pkg/utils"
 
 	"github.com/google/uuid"
 
@@ -17,11 +18,15 @@ type UserRepository interface {
 }
 
 type UserUsecase struct {
-	repo UserRepository
+	repo      UserRepository
+	jwtSecret []byte
 }
 
-func NewUserUsecase(repo UserRepository) *UserUsecase {
-	return &UserUsecase{repo: repo}
+func NewUserUsecase(repo UserRepository, secret string) *UserUsecase {
+	return &UserUsecase{
+		repo:      repo,
+		jwtSecret: []byte(secret),
+	}
 }
 
 func (u *UserUsecase) Register(ctx context.Context, req domain.RegisterRequest) (*domain.UserResponse, error) {
@@ -30,11 +35,11 @@ func (u *UserUsecase) Register(ctx context.Context, req domain.RegisterRequest) 
 		return nil, fmt.Errorf("usecase.Register: %w", err)
 	}
 	if existing != nil {
-		return nil, errors.New("email already taken")
+		return nil, castomErr.ErrEmailTaken
 	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("usecase.Register: hash falid: %w", err)
+		return nil, fmt.Errorf("usecase.Register: hash failed: %w", err)
 	}
 	user := &domain.User{
 		ID:           uuid.New(),
@@ -49,4 +54,22 @@ func (u *UserUsecase) Register(ctx context.Context, req domain.RegisterRequest) 
 		Email:     user.Email,
 		CreatedAt: user.CreatedAt,
 	}, nil
+}
+
+func (u *UserUsecase) Login(ctx context.Context, email, password string) (string, error) {
+	existing, err := u.repo.GetByEmail(ctx, email)
+	if err != nil {
+		return "", fmt.Errorf("usecase.Login: %w", err)
+	}
+	if existing == nil {
+		return "", castomErr.ErrInvalidCredentials
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), []byte(password)); err != nil {
+		return "", castomErr.ErrInvalidCredentials
+	}
+	token, err := utils.GenerateToken(existing.ID, u.jwtSecret)
+	if err != nil {
+		return "", fmt.Errorf("usecase.Login: %w", err)
+	}
+	return token, nil
 }
