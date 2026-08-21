@@ -32,14 +32,14 @@ func NewUserUsecase(repo UserRepository, secret string) *UserUsecase {
 func (u *UserUsecase) Register(ctx context.Context, req domain.RegisterRequest) (*domain.UserResponse, error) {
 	existing, err := u.repo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, fmt.Errorf("usecase.Register: %w", err)
+		return nil, fmt.Errorf("user_usecase.Register: %w", err)
 	}
 	if existing != nil {
 		return nil, castomErr.ErrEmailTaken
 	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("usecase.Register: hash failed: %w", err)
+		return nil, fmt.Errorf("user_usecase.Register: hash failed: %w", err)
 	}
 	user := &domain.User{
 		ID:           uuid.New(),
@@ -47,7 +47,7 @@ func (u *UserUsecase) Register(ctx context.Context, req domain.RegisterRequest) 
 		PasswordHash: string(hashed),
 	}
 	if err := u.repo.Create(ctx, user); err != nil {
-		return nil, fmt.Errorf("usecase.Register: %w", err)
+		return nil, fmt.Errorf("user_usecase.Register: %w", err)
 	}
 	return &domain.UserResponse{
 		ID:        user.ID,
@@ -59,7 +59,7 @@ func (u *UserUsecase) Register(ctx context.Context, req domain.RegisterRequest) 
 func (u *UserUsecase) Login(ctx context.Context, email, password string) (string, error) {
 	existing, err := u.repo.GetByEmail(ctx, email)
 	if err != nil {
-		return "", fmt.Errorf("usecase.Login: %w", err)
+		return "", fmt.Errorf("user_usecase.Login: %w", err)
 	}
 	if existing == nil {
 		return "", castomErr.ErrInvalidCredentials
@@ -69,7 +69,7 @@ func (u *UserUsecase) Login(ctx context.Context, email, password string) (string
 	}
 	token, err := utils.GenerateToken(existing.ID, u.jwtSecret)
 	if err != nil {
-		return "", fmt.Errorf("usecase.Login: %w", err)
+		return "", fmt.Errorf("user_usecase.Login: %w", err)
 	}
 	return token, nil
 }

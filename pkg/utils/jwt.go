@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"time"
+
+	castomErr "task-manager/pkg/errors"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -36,15 +37,15 @@ func ValidateToken(tokenString string, jwtSecret []byte) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("jwt.ValidateToken: parse token: %w", err)
 	}
 	if !token.Valid {
-		return uuid.Nil, errors.New("jwt.ValidateToken: invalid token")
+		return uuid.Nil, castomErr.ErrInvalidToken
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return uuid.Nil, errors.New("jwt.ValidateToken: invalid claims type")
+		return uuid.Nil, castomErr.ErrInvalidClaimType
 	}
 	userIDStr, ok := claims[string(UserIDKey)].(string)
 	if !ok {
-		return uuid.Nil, errors.New("jwt.ValidateToken: missing or invalid user_id field")
+		return uuid.Nil, castomErr.ErrWithUserID
 	}
 
 	userID, err := uuid.Parse(userIDStr)

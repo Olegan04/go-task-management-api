@@ -64,6 +64,10 @@ func main() {
 	userUsecase := usecase.NewUserUsecase(userRepo, jwtSecret)
 	userHandler := deliveryHttp.NewUserHandler(userUsecase)
 
+	taskRepo := postgres.NewTaskRepo(database)
+	taskUsecase := usecase.NewTaskUsecase(taskRepo)
+	taskHandler := deliveryHttp.NewTaskHandler(taskUsecase)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -71,6 +75,14 @@ func main() {
 
 	r.Post("/api/register", userHandler.Register)
 	r.Post("/api/login", userHandler.Login)
+	r.Route("/api/tasks", func(r chi.Router) {
+		r.Use(Auth)
+		r.Post("/", taskHandler.CreateTask)
+		r.Get("/", taskHandler.GetTasks)
+		r.Get("/{id}", taskHandler.GetTaskByID)
+		r.Put("/{id}", taskHandler.UpdateTask)
+		r.Delete("/{id]}", taskHandler.DeleteTask)
+	})
 
 	srv := &http.Server{
 		Addr:         ":8080",
