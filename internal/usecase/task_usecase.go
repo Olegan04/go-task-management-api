@@ -25,15 +25,6 @@ func NewTaskUsecase(repo TaskRepository) *TaskUsecase {
 	return &TaskUsecase{repo: repo}
 }
 
-func isValidStatus(status string) bool {
-	switch status {
-	case domain.Pending, domain.InProgress, domain.Done:
-		return true
-	default:
-		return false
-	}
-}
-
 func (t *TaskUsecase) CreateTask(ctx context.Context, userID uuid.UUID, req *domain.CreateTaskRequest) (*domain.Task, error) {
 	if req.Title == "" {
 		return nil, castomErr.ErrEmptyTitle
