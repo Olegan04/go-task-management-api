@@ -23,15 +23,15 @@ type Task struct {
 }
 
 type CreateTaskRequest struct {
-	Title       string `json:"title"`
+	Title       string `json:"title" validate:"required"`
 	Description string `json:"description"`
-	Status      string `json:"status"`
+	Status      string `json:"status" validate:"required,oneof=pending in_progress done"`
 }
 
 type UpdateTaskRequest struct {
-	Title       string `json:"title"`
+	Title       string `json:"title" validate:"required"`
 	Description string `json:"description"`
-	Status      string `json:"status"`
+	Status      string `json:"status" lidate:"required,oneof=pending in_progress done"`
 }
 
 type TaskResponse struct {

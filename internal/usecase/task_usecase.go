@@ -38,9 +38,6 @@ func (t *TaskUsecase) CreateTask(ctx context.Context, userID uuid.UUID, req *dom
 	if req.Title == "" {
 		return nil, castomErr.ErrEmptyTitle
 	}
-	if !isValidStatus(req.Status) {
-		return nil, castomErr.ErrInvalidStatus
-	}
 	task, err := t.repo.Create(ctx, userID, req)
 	if err != nil {
 		return nil, fmt.Errorf("task_usecase.CreateTask: %w", err)
@@ -67,9 +64,6 @@ func (t *TaskUsecase) GetTaskByID(ctx context.Context, userID, taskID uuid.UUID)
 func (t *TaskUsecase) UpdateTask(ctx context.Context, userID, taskID uuid.UUID, req domain.UpdateTaskRequest) (*domain.Task, error) {
 	if req.Title == "" {
 		return nil, castomErr.ErrEmptyTitle
-	}
-	if !isValidStatus(req.Status) {
-		return nil, castomErr.ErrInvalidStatus
 	}
 	task, err := t.repo.Update(ctx, userID, taskID, &req)
 	if err != nil {

@@ -37,6 +37,13 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if errMap := utils.ValidateStruct(req); errMap != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"errors": errMap})
+		return
+	}
+
 	task, err := h.usecase.CreateTask(r.Context(), userID, &req)
 	if err != nil {
 		switch {
@@ -127,6 +134,14 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+
+	if errMap := utils.ValidateStruct(req); errMap != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"errors": errMap})
+		return
+	}
+
 	task, err := h.usecase.UpdateTask(r.Context(), userID, taskID, req)
 	if err != nil {
 		switch {

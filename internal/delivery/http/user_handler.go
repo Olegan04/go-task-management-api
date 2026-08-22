@@ -8,6 +8,7 @@ import (
 	"task-manager/internal/domain"
 	"task-manager/internal/usecase"
 	castomErr "task-manager/pkg/errors"
+	"task-manager/pkg/utils"
 )
 
 type UserHandler struct {
@@ -20,10 +21,16 @@ func NewUserHandler(usecase *usecase.UserUsecase) *UserHandler {
 
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req domain.RegisterRequest
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Decode error: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if errMap := utils.ValidateStruct(req); errMap != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"errors": errMap})
 		return
 	}
 
@@ -45,10 +52,16 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req domain.LoginRequest
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Decode error: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if errMap := utils.ValidateStruct(req); errMap != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"errors": errMap})
 		return
 	}
 
